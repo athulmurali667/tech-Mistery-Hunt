@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from app.core.config import supabase
+from app.core.security import verify_admin_token
 import hashlib
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -32,7 +33,7 @@ class EvidenceCreate(BaseModel):
     piece_data: str
 
 @router.get("/teams")
-def get_all_teams():
+def get_all_teams(_=Depends(verify_admin_token)):
     if not supabase:
         return [{"id": "test-id", "team_code": "TEST-123", "name": "DEMO TEAM", "score": 0, "current_checkpoint_sequence": 1}]
     res = supabase.table("teams").select("*").order("score", desc=True).execute()
@@ -45,19 +46,19 @@ def create_team(team: TeamUpdate):
     return res.data[0] if res.data else None
 
 @router.put("/teams/{team_id}")
-def update_team(team_id: str, team: TeamUpdate):
+def update_team(team_id: str, team: TeamUpdate, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     res = supabase.table("teams").update(team.dict()).eq("id", team_id).execute()
     return res.data[0] if res.data else None
 
 @router.delete("/teams/{team_id}")
-def delete_team(team_id: str):
+def delete_team(team_id: str, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     supabase.table("teams").delete().eq("id", team_id).execute()
     return {"success": True}
 
 @router.get("/checkpoints")
-def get_all_checkpoints():
+def get_all_checkpoints(_=Depends(verify_admin_token)):
     if not supabase:
         return [
             {
@@ -153,7 +154,7 @@ def get_all_checkpoints():
     return res.data
 
 @router.post("/checkpoints")
-def create_checkpoint(cp: CheckpointUpdate):
+def create_checkpoint(cp: CheckpointUpdate, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     
     insert_data = {
@@ -179,7 +180,7 @@ def create_checkpoint(cp: CheckpointUpdate):
     return res.data[0] if res.data else None
 
 @router.put("/checkpoints/{sequence}")
-def update_checkpoint(sequence: int, cp: CheckpointUpdate):
+def update_checkpoint(sequence: int, cp: CheckpointUpdate, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     
     update_data = {
@@ -201,13 +202,13 @@ def update_checkpoint(sequence: int, cp: CheckpointUpdate):
     return res.data[0] if res.data else None
 
 @router.delete("/checkpoints/{sequence}")
-def delete_checkpoint(sequence: int):
+def delete_checkpoint(sequence: int, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     supabase.table("checkpoints").delete().eq("sequence", sequence).execute()
     return {"success": True}
 
 @router.get("/evidence")
-def get_all_evidence():
+def get_all_evidence(_=Depends(verify_admin_token)):
     if not supabase:
         return [
             {"id": "ev-1", "checkpoint_sequence": 1, "clue_data": "EVIDENCE 1: 7"},
@@ -217,25 +218,25 @@ def get_all_evidence():
     return res.data
 
 @router.put("/evidence/{sequence}")
-def update_evidence(sequence: int, ev: EvidenceUpdate):
+def update_evidence(sequence: int, ev: EvidenceUpdate, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     res = supabase.table("evidence").update({"piece_data": ev.piece_data}).eq("checkpoint_sequence", sequence).execute()
     return res.data[0] if res.data else None
 
 @router.post("/evidence")
-def create_evidence(ev: EvidenceCreate):
+def create_evidence(ev: EvidenceCreate, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     res = supabase.table("evidence").insert(ev.dict()).execute()
     return res.data[0] if res.data else None
 
 @router.delete("/evidence/{sequence}")
-def delete_evidence(sequence: int):
+def delete_evidence(sequence: int, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     supabase.table("evidence").delete().eq("checkpoint_sequence", sequence).execute()
     return {"success": True}
 
 @router.post("/test/reset/{team_id}")
-def reset_team_progress(team_id: str):
+def reset_team_progress(team_id: str, _=Depends(verify_admin_token)):
     if not supabase: return {"success": True}
     
     # Delete progress and score logs

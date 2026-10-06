@@ -17,8 +17,20 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         team_id: str = payload.get("sub")
-        if team_id is None:
+        role: str = payload.get("role")
+        if team_id is None or role == "admin":
+            # If it's an admin token, it won't have a team_id, but it shouldn't pass verify_token (team only)
             raise HTTPException(status_code=401, detail="Invalid token")
         return team_id
     except Exception as e:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        role: str = payload.get("role")
+        if role != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized as admin")
+        return True
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Could not validate admin credentials")

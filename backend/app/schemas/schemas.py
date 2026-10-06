@@ -14,3 +14,6 @@ class VolunteerVerification(BaseModel):
     team_id: str
     checkpoint_sequence: int
     verification_code: str
+
+class AdminLogin(BaseModel):
+    password: str

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from app.core.config import supabase
+from app.core.config import supabase, ADMIN_PASSWORD
 from app.core.security import create_access_token
-from app.schemas.schemas import TeamLogin
+from app.schemas.schemas import TeamLogin, AdminLogin
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -28,3 +28,11 @@ def login(team: TeamLogin):
             "hints_remaining": team_data["hints_remaining"]
         }
     }
+
+@router.post("/admin-login")
+def admin_login(admin: AdminLogin):
+    if admin.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid admin password")
+    
+    token = create_access_token({"sub": "admin", "role": "admin"})
+    return {"access_token": token}

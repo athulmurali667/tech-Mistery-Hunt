@@ -7,6 +7,7 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://placeholder.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "placeholder")
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecret-placeholder-key")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "techfest_admin")
 ALGORITHM = "HS256"
 
 try:

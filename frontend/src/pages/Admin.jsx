@@ -7,6 +7,10 @@ export default function Admin() {
   const [checkpoints, setCheckpoints] = useState([]);
   const [evidence, setEvidence] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  const [adminToken, setAdminToken] = useState(localStorage.getItem('adminToken') || null);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   // States for editing
   const [editingCheckpoint, setEditingCheckpoint] = useState(null);
@@ -15,17 +19,24 @@ export default function Admin() {
   const [evFormData, setEvFormData] = useState({});
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (adminToken) {
+      fetchData();
+    }
+  }, [adminToken]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      const headers = { 'Authorization': `Bearer ${adminToken}` };
       const [tRes, cRes, eRes] = await Promise.all([
-        fetch('http://localhost:8000/api/admin/teams'),
-        fetch('http://localhost:8000/api/admin/checkpoints'),
-        fetch('http://localhost:8000/api/admin/evidence')
+        fetch('http://localhost:8000/api/admin/teams', { headers }),
+        fetch('http://localhost:8000/api/admin/checkpoints', { headers }),
+        fetch('http://localhost:8000/api/admin/evidence', { headers })
       ]);
+      if (tRes.status === 401 || tRes.status === 403) {
+        handleLogout();
+        return;
+      }
       setTeams(await tRes.json());
       setCheckpoints(await cRes.json());
       setEvidence(await eRes.json());
@@ -36,10 +47,39 @@ export default function Admin() {
     }
   };
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('http://localhost:8000/api/auth/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('adminToken', data.access_token);
+        setAdminToken(data.access_token);
+        setLoginError('');
+      } else {
+        setLoginError('Invalid credentials');
+      }
+    } catch (err) {
+      setLoginError('Connection failed');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    setAdminToken(null);
+  };
+
   const resetTestTeam = async (teamId) => {
     if (!window.confirm("This will completely reset this team's progress. Continue?")) return;
     try {
-      await fetch(`http://localhost:8000/api/admin/test/reset/${teamId}`, { method: 'POST' });
+      await fetch(`http://localhost:8000/api/admin/test/reset/${teamId}`, { 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
       fetchData();
       alert("Team reset successfully.");
     } catch (err) {
@@ -51,7 +91,10 @@ export default function Admin() {
     try {
       await fetch(`http://localhost:8000/api/admin/checkpoints/${editingCheckpoint}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
         body: JSON.stringify(cpFormData)
       });
       setEditingCheckpoint(null);
@@ -65,7 +108,10 @@ export default function Admin() {
     try {
       await fetch(`http://localhost:8000/api/admin/evidence/${editingEvidence}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
         body: JSON.stringify(evFormData)
       });
       setEditingEvidence(null);
@@ -74,6 +120,35 @@ export default function Admin() {
       alert("Save failed");
     }
   };
+
+  if (!adminToken) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-zinc-300 font-mono flex flex-col items-center justify-center p-4">
+        <div className="bg-zinc-950 border border-red-500/30 p-8 rounded-xl max-w-md w-full shadow-[0_0_30px_rgba(239,68,68,0.1)]">
+          <div className="flex items-center gap-3 mb-8 justify-center">
+            <ShieldAlert className="w-8 h-8 text-red-500" />
+            <h1 className="text-2xl font-bold tracking-widest text-white">SYS_ADMIN</h1>
+          </div>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-xs text-red-500/80 mb-2 font-bold tracking-widest">AUTHORIZATION KEY</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full bg-black border border-red-500/30 text-white px-4 py-3 rounded focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                placeholder="Enter password..."
+              />
+            </div>
+            {loginError && <div className="text-red-500 text-sm font-bold text-center">{loginError}</div>}
+            <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded tracking-widest transition-colors">
+              AUTHENTICATE
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return <div className="min-h-screen bg-zinc-950 text-red-500 p-8 font-mono">LOADING ADMIN MODULE...</div>;
 
@@ -160,7 +235,10 @@ export default function Admin() {
                 };
                 await fetch('http://localhost:8000/api/admin/checkpoints', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`
+                  },
                   body: JSON.stringify(newCp)
                 });
                 window.location.reload();
@@ -237,7 +315,10 @@ export default function Admin() {
                     <div className="flex gap-2 justify-end pt-4">
                       <button onClick={async () => {
                         if(window.confirm('Delete this checkpoint?')) {
-                          await fetch(`http://localhost:8000/api/admin/checkpoints/${cp.sequence}`, { method: 'DELETE' });
+                          await fetch(`http://localhost:8000/api/admin/checkpoints/${cp.sequence}`, { 
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${adminToken}` }
+                          });
                           window.location.reload();
                         }
                       }} className="mr-auto px-4 py-2 bg-red-900/50 text-red-500 font-bold rounded hover:bg-red-900 text-sm">DELETE</button>
@@ -273,7 +354,10 @@ export default function Admin() {
                 };
                 await fetch('http://localhost:8000/api/admin/evidence', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`
+                  },
                   body: JSON.stringify(newEv)
                 });
                 window.location.reload();
@@ -312,7 +396,10 @@ export default function Admin() {
                           <button onClick={saveEvidence} className="text-green-500 hover:text-green-400"><Save className="w-5 h-5"/></button>
                           <button onClick={async () => {
                             if(window.confirm('Delete this evidence?')) {
-                              await fetch(`http://localhost:8000/api/admin/evidence/${ev.checkpoint_sequence}`, { method: 'DELETE' });
+                              await fetch(`http://localhost:8000/api/admin/evidence/${ev.checkpoint_sequence}`, { 
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${adminToken}` }
+                              });
                               window.location.reload();
                             }
                           }} className="text-red-500 hover:text-red-400"><Trash2 className="w-5 h-5"/></button>
