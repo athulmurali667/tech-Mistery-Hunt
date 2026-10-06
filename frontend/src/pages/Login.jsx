@@ -1,104 +1,159 @@
-import { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Shield, Users, UserPlus, QrCode } from 'lucide-react';
 import { GameContext } from '../context/GameContext';
-import { Terminal, Lock } from 'lucide-react';
 
 export default function Login() {
-  const [teamCode, setTeamCode] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useContext(GameContext);
   const navigate = useNavigate();
+  const { login } = React.useContext(GameContext);
+  const [mode, setMode] = useState('select'); // select, create, join
+  const [error, setError] = useState('');
+  
+  // Create Form
+  const [createData, setCreateData] = useState({ team_name: '', captain_name: '', contact: '', department: '' });
+  
+  // Join Form
+  const [joinData, setJoinData] = useState({ join_code: '', member_name: '', contact: '', department: '' });
 
-  const handleLogin = async (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-    
     try {
-      const response = await fetch('http://localhost:8000/api/auth/login', {
+      const res = await fetch('http://localhost:8000/api/registration/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_code: teamCode }),
+        body: JSON.stringify(createData)
       });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Access Denied');
+      const data = await res.json();
+      if (res.ok) {
+        login({ id: data.team_id, name: createData.team_name, current_checkpoint_sequence: 1 }, data.access_token);
+        navigate('/lobby'); // Navigate to lobby
+      } else {
+        setError(data.detail || 'Failed to create team');
       }
-      
-      login(data.team, data.access_token);
-      navigate('/activation');
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setError('Connection failed');
+    }
+  };
+
+  const handleJoin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('http://localhost:8000/api/registration/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(joinData)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        login({ id: data.team_id, name: data.team_name, current_checkpoint_sequence: 1 }, data.access_token);
+        navigate('/lobby');
+      } else {
+        setError(data.detail || 'Failed to join team');
+      }
+    } catch (err) {
+      setError('Connection failed');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 px-4 relative overflow-hidden">
-      {/* Background glow effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-green-500/10 blur-[120px] rounded-full pointer-events-none" />
-      
-      <div className="max-w-md w-full relative z-10">
-        <div className="backdrop-blur-xl bg-zinc-900/50 border border-green-500/30 p-8 rounded-2xl shadow-[0_0_40px_-10px_rgba(34,197,94,0.2)]">
-          
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20 mb-4 animate-pulse">
-              <Lock className="w-8 h-8 text-green-400" />
-            </div>
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600 tracking-wider text-center">
-              TECH_MYSTERY_HUNT
-            </h1>
-            <p className="text-zinc-400 mt-2 text-sm uppercase tracking-widest font-mono">
-              Master Access Protocol
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-green-500/80 mb-2 font-mono">
-                &gt; ENTER_TEAM_CODE
-              </label>
-              <div className="relative group">
-                <Terminal className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500/50 group-focus-within:text-green-400 transition-colors" />
-                <input 
-                  type="text" 
-                  value={teamCode}
-                  onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
-                  className="w-full bg-zinc-950/50 border border-green-500/30 text-green-400 px-10 py-3 rounded-lg focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-all font-mono uppercase placeholder-zinc-700"
-                  placeholder="e.g. ALPHA-7"
-                  required
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm font-mono flex items-center">
-                <span className="mr-2">!</span> {error}
-              </div>
-            )}
-
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-green-500 hover:bg-green-400 text-zinc-950 font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] font-mono tracking-wider flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:shadow-[0_0_25px_rgba(34,197,94,0.6)]"
-            >
-              {loading ? 'AUTHENTICATING...' : 'INITIALIZE_CONNECTION'}
-            </button>
-          </form>
-
-          <div className="mt-8 text-center">
-            <button 
-              onClick={() => navigate('/leaderboard')}
-              className="text-green-500/50 hover:text-green-400 font-mono text-sm underline underline-offset-4 tracking-widest transition-colors"
-            >
-              VIEW GLOBAL LEADERBOARD
-            </button>
-          </div>
+    <div className="min-h-screen bg-[#050505] text-zinc-300 flex items-center justify-center p-4 font-sans bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-zinc-900/20 via-[#050505] to-[#050505]">
+      <div className="w-full max-w-md">
+        
+        <div className="text-center mb-8">
+          <Shield className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-white tracking-widest uppercase">The Missing Code</h1>
+          <p className="text-zinc-500 font-mono mt-2 text-sm">TECHFEST REGISTRATION TERMINAL</p>
         </div>
+
+        {error && (
+          <div className="bg-red-900/50 border border-red-500/30 text-red-200 p-3 mb-6 text-sm font-mono text-center">
+            {error}
+          </div>
+        )}
+
+        {mode === 'select' && (
+          <div className="space-y-4">
+            <button 
+              onClick={() => setMode('create')}
+              className="w-full bg-cyan-600/20 border border-cyan-500 hover:bg-cyan-600/30 text-white p-6 flex flex-col items-center gap-3 transition-colors group"
+            >
+              <Users className="w-8 h-8 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <span className="font-bold tracking-widest uppercase">Create Team</span>
+              <span className="text-xs text-zinc-400">Become a Captain and invite members</span>
+            </button>
+
+            <button 
+              onClick={() => setMode('join')}
+              className="w-full bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-white p-6 flex flex-col items-center gap-3 transition-colors group"
+            >
+              <UserPlus className="w-8 h-8 text-zinc-400 group-hover:text-white transition-colors" />
+              <span className="font-bold tracking-widest uppercase">Join Team</span>
+              <span className="text-xs text-zinc-500">Enter a code or scan QR from your Captain</span>
+            </button>
+          </div>
+        )}
+
+        {mode === 'create' && (
+          <div className="bg-zinc-900 border border-zinc-800 p-6">
+            <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wider">Initialize Team</h2>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Team Name</label>
+                <input required className="w-full bg-zinc-950 border border-zinc-800 p-3 text-white" value={createData.team_name} onChange={e => setCreateData({...createData, team_name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Captain Name</label>
+                <input required className="w-full bg-zinc-950 border border-zinc-800 p-3 text-white" value={createData.captain_name} onChange={e => setCreateData({...createData, captain_name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Contact (Phone/Email)</label>
+                <input required className="w-full bg-zinc-950 border border-zinc-800 p-3 text-white" value={createData.contact} onChange={e => setCreateData({...createData, contact: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Department/College</label>
+                <input required className="w-full bg-zinc-950 border border-zinc-800 p-3 text-white" value={createData.department} onChange={e => setCreateData({...createData, department: e.target.value})} />
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <button type="button" onClick={() => setMode('select')} className="px-4 py-3 bg-zinc-800 text-zinc-300 font-bold uppercase tracking-wider hover:bg-zinc-700">Back</button>
+                <button type="submit" className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase tracking-wider py-3">Create</button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {mode === 'join' && (
+          <div className="bg-zinc-900 border border-zinc-800 p-6">
+            <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wider">Join Team</h2>
+            <form onSubmit={handleJoin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Join Code</label>
+                <div className="flex gap-2">
+                  <input required className="flex-1 bg-zinc-950 border border-zinc-800 p-3 text-cyan-400 font-mono tracking-widest uppercase text-center" value={joinData.join_code} onChange={e => setJoinData({...joinData, join_code: e.target.value})} placeholder="XXXXXX" />
+                  <button type="button" className="bg-zinc-800 hover:bg-zinc-700 p-3 text-white"><QrCode /></button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Your Name</label>
+                <input required className="w-full bg-zinc-950 border border-zinc-800 p-3 text-white" value={joinData.member_name} onChange={e => setJoinData({...joinData, member_name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Contact (Phone/Email)</label>
+                <input required className="w-full bg-zinc-950 border border-zinc-800 p-3 text-white" value={joinData.contact} onChange={e => setJoinData({...joinData, contact: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Department/College</label>
+                <input required className="w-full bg-zinc-950 border border-zinc-800 p-3 text-white" value={joinData.department} onChange={e => setJoinData({...joinData, department: e.target.value})} />
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <button type="button" onClick={() => setMode('select')} className="px-4 py-3 bg-zinc-800 text-zinc-300 font-bold uppercase tracking-wider hover:bg-zinc-700">Back</button>
+                <button type="submit" className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase tracking-wider py-3">Join</button>
+              </div>
+            </form>
+          </div>
+        )}
+
       </div>
     </div>
   );

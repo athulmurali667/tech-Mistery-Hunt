@@ -8,6 +8,7 @@ import Checkpoint from './pages/Checkpoint';
 import Volunteer from './pages/Volunteer';
 import Leaderboard from './pages/Leaderboard';
 import Admin from './pages/Admin';
+import TeamLobby from './pages/TeamLobby';
 
 const ProtectedRoute = ({ children }) => {
   const { team } = useContext(GameContext);
@@ -19,6 +20,12 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route 
+        path="/lobby" 
+        element={
+          <TeamLobby />
+        } 
+      />
       <Route 
         path="/activation" 
         element={

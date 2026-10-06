@@ -25,6 +25,13 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     except Exception as e:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
+def verify_token_payload(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
 def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])

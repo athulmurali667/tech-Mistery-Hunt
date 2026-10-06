@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, game, admin
+from app.api import auth, game, admin, registration
 
 app = FastAPI(title="Tech Mystery Hunt API")
 
@@ -13,6 +13,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(registration.router)
 app.include_router(game.router)
 app.include_router(admin.router)
 

@@ -17,3 +17,15 @@ class VolunteerVerification(BaseModel):
 
 class AdminLogin(BaseModel):
     password: str
+
+class TeamCreate(BaseModel):
+    team_name: str
+    captain_name: str
+    contact: str
+    department: str
+
+class TeamJoin(BaseModel):
+    join_code: str
+    member_name: str
+    contact: str
+    department: str
